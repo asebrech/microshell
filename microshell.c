@@ -1,75 +1,121 @@
 #include "microshell.h"
 
-int	nb_pipe(char **av)
+int	ft_strlen(char *str)
 {
 	int	i = 0;
-	int pipe = 0;
 
-	while (av[i] != NULL)
-	{
-		if (!(strcmp(av[i], "|")))
-			pipe++;
-		if (pipe == 2)
-			return (2);
+	while (str[i])
 		i++;
-	}
-	return (pipe);
+	return (i);
 }
 
-int	ft_exec(char **av, char **env)
+void	ft_fatal()
 {
-	int	pid;
+	write(2, "error: fatal\n", 13);
+	exit (1);
+}
 
-	if (!(pid = fork()))
+void	ft_error(char *str)
+{
+		write(2, "error: cannot execute ", 22);
+		write(2, str, ft_strlen(str));
+		write(2, "\n", 1);
+		exit (1);
+}
+
+void	ft_cd(char **av, int i, int j)
+{
+	av[i] = NULL;
+	if (av[j + 1] == NULL || av[j + 2] != NULL)
+		write(2, "error: cd: bad arguments\n", 25);
+	else
 	{
-		execve(av[0], av, env);
+		if(chdir(av[j + 1]) == -1)
+		{
+			write(2, "error: cd: cannot change directory to ", 38);
+			write(2, av[j + 1], ft_strlen(av[j + 1]));
+			write(2, "\n", 1);
+		}
 	}
-	return (pid);
 }
 
-void	parsing(char **av, char **env, int fd0)
+void	ft_point(char **av, char **env, int fdin, int i, int j)
 {
-	int		i = 0;
 	pid_t	pid;
-	int		fd[2];
 
-	dup2(fd0, 0);
-	if (fd0 != 0)
-		close(fd0);
-	while (av[i] != NULL)
+	if (!(strcmp("cd", av[j])))
+		ft_cd(av, i, j);
+	else if ((pid = fork()) == 0)
 	{
-		if (!(strcmp(av[i], ";")))
+		if (fdin != 0)
 		{
-			av[i] = NULL;
-			if (!(pid = fork()))
-				execve(av[0], av, env);
-			else
-				waitpid(pid, NULL, 0);
-			parsing(&av[i + 1], env, 0);
+			dup2(fdin, 0);
+			close(fdin);
 		}
-		else if (!(strcmp(av[i], "|")))
-		{
-			pipe(fd);
-			av[i] = NULL;
-			if (!(pid = fork()))
-			{
-				dup2(fd[1], 1);
-				close(fd[1]);
-				execve(av[0], av, env);
-			}
-			else
-				waitpid(pid, NULL, 0);
-			parsing(&av[i + 1], env, fd[0]);
-			close(fd[0]);
-			close(fd[1]);
-		}
-		i++;
+		av[i] = NULL;
+		if (execve(av[j], &av[j], env) == -1);
+			ft_error(av[j]);
 	}
-	execve(av[0], av, env);
+	else if (pid == -1)
+		ft_fatal();
+	waitpid(pid, NULL, 0);
+}
+
+void	ft_pipe(char **av, char **env, int fdin, int i, int j, int *fd)
+{
+	pid_t	pid;
+
+	if ((pid = fork()) == 0)
+	{
+		dup2(fd[1], 1);
+		close(fd[1]);
+		close(fd[0]);
+		if (fdin != 0)
+		{
+			dup2(fdin, 0);
+			close(fdin);
+		}
+		av[i] = NULL;
+		if (execve(av[j], &av[j], env) == -1);
+			ft_error(av[j]);
+	}
+	else if (pid == -1)
+		ft_fatal();
+	waitpid(pid, NULL, 0);
 }
 
 int	main(int ac, char **av, char **env)
 {
-	parsing(&av[1], env, 0);
+	int	fd[2];
+	int	fdin = 0;
+	int	i = 1;
+	int	j = 1;
+
+	while (i < ac)
+	{
+		if (!(strcmp(";", av[i])))
+		{
+			ft_point(av, env, fdin, i, j);
+			if (fdin != 0)
+				close(fdin);
+			fdin = 0;
+			j = i + 1;
+		}
+		else if(!(strcmp("|", av[i])))
+		{
+			if (pipe(fd) == -1)
+				ft_fatal();
+			ft_pipe(av, env, fdin, i, j, fd);
+			close(fd[1]);
+			if (fdin != 0)
+				close(fdin);
+			fdin = fd[0];
+			j = i + 1;
+		}
+		i++;
+	}
+	ft_point(av, env, fdin, i, j);
+	if (fdin != 0)
+		close(fdin);
 	return (0);
 }
