@@ -53,7 +53,7 @@ void	ft_point(char **av, char **env, int fdin, int i, int j)
 			close(fdin);
 		}
 		av[i] = NULL;
-		if (execve(av[j], &av[j], env) == -1);
+		if (execve(av[j], &av[j], env) == -1)
 			ft_error(av[j]);
 	}
 	else if (pid == -1)
@@ -76,7 +76,7 @@ void	ft_pipe(char **av, char **env, int fdin, int i, int j, int *fd)
 			close(fdin);
 		}
 		av[i] = NULL;
-		if (execve(av[j], &av[j], env) == -1);
+		if (execve(av[j], &av[j], env) == -1)
 			ft_error(av[j]);
 	}
 	else if (pid == -1)
@@ -95,7 +95,8 @@ int	main(int ac, char **av, char **env)
 	{
 		if (!(strcmp(";", av[i])))
 		{
-			ft_point(av, env, fdin, i, j);
+			if (i != j)
+				ft_point(av, env, fdin, i, j);
 			if (fdin != 0)
 				close(fdin);
 			fdin = 0;
@@ -114,7 +115,8 @@ int	main(int ac, char **av, char **env)
 		}
 		i++;
 	}
-	ft_point(av, env, fdin, i, j);
+	if (i != j)
+		ft_point(av, env, fdin, i, j);
 	if (fdin != 0)
 		close(fdin);
 	return (0);
