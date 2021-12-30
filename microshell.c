@@ -17,10 +17,10 @@ void	ft_fatal()
 
 void	ft_error(char *str)
 {
-		write(2, "error: cannot execute ", 22);
-		write(2, str, ft_strlen(str));
-		write(2, "\n", 1);
-		exit (1);
+	write(2, "error: cannot execute ", 22);
+	write(2, str, ft_strlen(str));
+	write(2, "\n", 1);
+	exit (1);
 }
 
 void	ft_cd(char **av, int i, int j)
@@ -45,20 +45,23 @@ void	ft_point(char **av, char **env, int fdin, int i, int j)
 
 	if (!(strcmp("cd", av[j])))
 		ft_cd(av, i, j);
-	else if ((pid = fork()) == 0)
+	else
 	{
-		if (fdin != 0)
+		if ((pid = fork()) == 0)
 		{
-			dup2(fdin, 0);
-			close(fdin);
+			if (fdin != 0)
+			{
+				dup2(fdin, 0);
+				close(fdin);
+			}
+			av[i] = NULL;
+			if (execve(av[j], &av[j], env) == -1)
+				ft_error(av[j]);
 		}
-		av[i] = NULL;
-		if (execve(av[j], &av[j], env) == -1)
-			ft_error(av[j]);
+		else if (pid == -1)
+			ft_fatal();
+		waitpid(pid, NULL, 0);
 	}
-	else if (pid == -1)
-		ft_fatal();
-	waitpid(pid, NULL, 0);
 }
 
 void	ft_pipe(char **av, char **env, int fdin, int i, int j, int *fd)
